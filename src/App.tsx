@@ -1,0 +1,108 @@
+import { 
+  BrowserRouter as Router, 
+  Routes, 
+  Route, 
+  Navigate 
+} from 'react-router-dom';
+import { AuthProvider, useAuth } from './contexts/AuthContext';
+import Layout from './components/Layout';
+import Login from './pages/auth/Login';
+import Register from './pages/auth/Register';
+import StaffDashboard from './pages/staff/Dashboard';
+import StaffQueries from './pages/staff/Queries';
+import StaffPromotions from './pages/staff/Promotions';
+import Profile from './pages/staff/Profile';
+import AdminDashboard from './pages/admin/Dashboard';
+import StaffManagement from './pages/admin/StaffManagement';
+import PayrollManagement from './pages/admin/PayrollManagement';
+import AdminQueries from './pages/admin/Queries';
+import AdminPromotions from './pages/admin/Promotions';
+import SeedData from './components/SeedData';
+
+// Placeholder Pages
+const Payslips = () => <div>Payslips Content</div>;
+
+export default function App() {
+  return (
+    <AuthProvider>
+      <AppContent />
+    </AuthProvider>
+  );
+}
+
+function AppContent() {
+  const { user, profile, loading, isAdmin, logout } = useAuth();
+
+  if (loading) {
+    return (
+      <div className="h-screen flex items-center justify-center bg-slate-50">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600"></div>
+      </div>
+    );
+  }
+
+  if (!user) {
+    return (
+      <Router>
+        <Routes>
+          <Route path="/login" element={<Login />} />
+          <Route path="/register" element={<Register />} />
+          <Route path="*" element={<Navigate to="/login" />} />
+        </Routes>
+      </Router>
+    );
+  }
+
+  if (profile?.status === 'pending') {
+    return (
+      <div className="h-screen flex items-center justify-center bg-slate-50 p-4">
+        <div className="max-w-md w-full bg-white rounded-2xl shadow-xl p-8 text-center space-y-4">
+          <div className="w-16 h-16 bg-yellow-100 rounded-full flex items-center justify-center mx-auto">
+            <span className="text-2xl">⏳</span>
+          </div>
+          <h1 className="text-2xl font-bold text-slate-900">Account Pending</h1>
+          <p className="text-slate-500">
+            Your account is currently pending approval from the HR department. 
+            You will be notified once your account is active.
+          </p>
+          <button 
+            onClick={logout}
+            className="text-primary-600 font-semibold hover:underline"
+          >
+            Sign Out
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <Router>
+      <Layout>
+        <Routes>
+          {isAdmin ? (
+            <>
+              <Route path="/admin" element={<div className="space-y-6"><SeedData /><AdminDashboard /></div>} />
+              <Route path="/admin/staff" element={<StaffManagement />} />
+              <Route path="/admin/payroll" element={<PayrollManagement />} />
+              <Route path="/admin/queries" element={<AdminQueries />} />
+              <Route path="/admin/promotions" element={<AdminPromotions />} />
+              <Route path="/admin/logs" element={<div>Logs</div>} />
+              <Route path="/admin/settings" element={<div>Settings</div>} />
+              <Route path="*" element={<Navigate to="/admin" />} />
+            </>
+          ) : (
+            <>
+              <Route path="/" element={<StaffDashboard />} />
+              <Route path="/payslips" element={<Payslips />} />
+              <Route path="/promotions" element={<StaffPromotions />} />
+              <Route path="/queries" element={<StaffQueries />} />
+              <Route path="/profile" element={<Profile />} />
+              <Route path="*" element={<Navigate to="/" />} />
+            </>
+          )}
+        </Routes>
+      </Layout>
+    </Router>
+  );
+}

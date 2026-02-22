@@ -1,0 +1,37 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
+@import "tailwindcss";
+
+@theme {
+  --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, monospace;
+  
+  --color-tide-bg: #0B1F33;
+  --color-tide-card: #132A42;
+  --color-tide-gold: #C6A86A;
+  --color-tide-gold-hover: #D8BB7C;
+  --color-tide-text: #FFFFFF;
+  --color-tide-muted: #A8B3C2;
+  --color-tide-danger: #E05A5A;
+}
+
+@layer base {
+  body {
+    @apply font-sans bg-tide-bg text-tide-text;
+  }
+}
+
+.glass-morphism {
+  @apply bg-tide-card/80 backdrop-blur-md border border-tide-gold/10 shadow-2xl;
+}
+
+.btn-primary {
+  @apply bg-tide-gold hover:bg-tide-gold-hover text-tide-bg font-bold py-2 px-4 rounded-lg transition-all duration-200 shadow-md active:scale-95;
+}
+
+.input-field {
+  @apply bg-tide-card border border-slate-700 text-tide-text rounded-lg px-4 py-3 outline-none focus:ring-2 focus:ring-tide-gold/50 focus:border-tide-gold transition-all placeholder:text-tide-muted/50;
+}
+
+.card-luxury {
+  @apply bg-tide-card border border-tide-gold/5 rounded-2xl shadow-xl;
+}
