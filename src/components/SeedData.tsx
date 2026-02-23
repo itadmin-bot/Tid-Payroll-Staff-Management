@@ -2,15 +2,41 @@ import {
   Database, 
   UserPlus, 
   FileText, 
-  AlertCircle 
+  AlertCircle,
+  ShieldCheck
 } from 'lucide-react';
-import { collection, addDoc, serverTimestamp, getDocs, query, limit } from 'firebase/firestore';
+import { collection, addDoc, serverTimestamp, getDocs, query, limit, doc, setDoc, getDoc } from 'firebase/firestore';
 import { db } from '../firebase/firebase';
 import { useState } from 'react';
 
 export default function SeedData() {
   const [loading, setLoading] = useState(false);
   const [done, setDone] = useState(false);
+
+  const initializeSystem = async () => {
+    setLoading(true);
+    try {
+      // Initialize Admin Access Code
+      const systemDoc = doc(db, 'settings', 'system');
+      const snap = await getDoc(systemDoc);
+      
+      if (!snap.exists()) {
+        await setDoc(systemDoc, {
+          adminAccessCode: "TIDE-ADMIN-2026-X9FQ",
+          updatedAt: serverTimestamp(),
+          updatedBy: 'system'
+        });
+        alert('System initialized with default Admin Access Code.');
+      } else {
+        alert('System already initialized.');
+      }
+    } catch (err) {
+      console.error('Error initializing system:', err);
+      alert('Failed to initialize system');
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const seedData = async () => {
     setLoading(true);
@@ -19,8 +45,6 @@ export default function SeedData() {
       const q = query(collection(db, 'users'), limit(1));
       const snapshot = await getDocs(q);
       
-      // We only seed if there's only 1 user (the admin who is logged in)
-      // For this demo, we'll just proceed if the user confirms
       if (!confirm('This will add 3 dummy staff members and sample data. Continue?')) {
         setLoading(false);
         return;
@@ -93,21 +117,40 @@ export default function SeedData() {
   if (done) return null;
 
   return (
-    <div className="bg-primary-50 border border-primary-200 p-4 rounded-xl flex items-center justify-between mb-8">
-      <div className="flex items-center gap-3">
-        <Database className="w-5 h-5 text-primary-600" />
-        <div>
-          <p className="text-sm font-bold text-primary-900">Database Empty?</p>
-          <p className="text-xs text-primary-700">Seed dummy staff data to test the system features.</p>
+    <div className="space-y-4 mb-8">
+      <div className="bg-tide-gold/10 border border-tide-gold/20 p-4 rounded-xl flex items-center justify-between">
+        <div className="flex items-center gap-3">
+          <ShieldCheck className="w-5 h-5 text-tide-gold" />
+          <div>
+            <p className="text-sm font-bold text-tide-text">System Setup</p>
+            <p className="text-xs text-tide-muted">Initialize the Admin Access Code for registration.</p>
+          </div>
         </div>
+        <button 
+          onClick={initializeSystem}
+          disabled={loading}
+          className="px-4 py-2 bg-tide-gold text-tide-bg text-xs font-bold rounded-lg hover:bg-tide-gold-hover transition disabled:opacity-50"
+        >
+          {loading ? 'Initializing...' : 'Initialize System'}
+        </button>
       </div>
-      <button 
-        onClick={seedData}
-        disabled={loading}
-        className="px-4 py-2 bg-primary-600 text-white text-xs font-bold rounded-lg hover:bg-primary-700 transition disabled:opacity-50"
-      >
-        {loading ? 'Seeding...' : 'Seed Dummy Data'}
-      </button>
+
+      <div className="bg-primary-50 border border-primary-200 p-4 rounded-xl flex items-center justify-between">
+        <div className="flex items-center gap-3">
+          <Database className="w-5 h-5 text-primary-600" />
+          <div>
+            <p className="text-sm font-bold text-primary-900">Database Empty?</p>
+            <p className="text-xs text-primary-700">Seed dummy staff data to test the system features.</p>
+          </div>
+        </div>
+        <button 
+          onClick={seedData}
+          disabled={loading}
+          className="px-4 py-2 bg-primary-600 text-white text-xs font-bold rounded-lg hover:bg-primary-700 transition disabled:opacity-50"
+        >
+          {loading ? 'Seeding...' : 'Seed Dummy Data'}
+        </button>
+      </div>
     </div>
   );
 }

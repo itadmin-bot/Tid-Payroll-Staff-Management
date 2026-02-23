@@ -142,6 +142,11 @@ export default function Login() {
           <p className="text-sm text-tide-muted">
             Don't have an account? <Link to="/register" className="text-tide-gold hover:text-tide-gold-hover font-semibold transition-colors">Register here</Link>
           </p>
+          <div className="pt-4 border-t border-tide-gold/10">
+            <p className="text-xs text-tide-muted">
+              Are you an administrator? <Link to="/admin/register" className="text-tide-gold hover:underline font-bold">Register as Admin</Link>
+            </p>
+          </div>
         </div>
       </div>
     </div>

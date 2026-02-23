@@ -4,10 +4,12 @@ import {
   Route, 
   Navigate 
 } from 'react-router-dom';
+import React, { useEffect } from 'react';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import Layout from './components/Layout';
 import Login from './pages/auth/Login';
 import Register from './pages/auth/Register';
+import AdminRegister from './pages/auth/AdminRegister';
 import StaffDashboard from './pages/staff/Dashboard';
 import StaffQueries from './pages/staff/Queries';
 import StaffPromotions from './pages/staff/Promotions';
@@ -17,12 +19,17 @@ import StaffManagement from './pages/admin/StaffManagement';
 import PayrollManagement from './pages/admin/PayrollManagement';
 import AdminQueries from './pages/admin/Queries';
 import AdminPromotions from './pages/admin/Promotions';
+import StaffProfile from './pages/admin/StaffProfile';
 import SeedData from './components/SeedData';
 
 // Placeholder Pages
 const Payslips = () => <div>Payslips Content</div>;
 
 export default function App() {
+  useEffect(() => {
+    document.title = "Tide Payroll System";
+  }, []);
+
   return (
     <AuthProvider>
       <AppContent />
@@ -47,6 +54,7 @@ function AppContent() {
         <Routes>
           <Route path="/login" element={<Login />} />
           <Route path="/register" element={<Register />} />
+          <Route path="/admin/register" element={<AdminRegister />} />
           <Route path="*" element={<Navigate to="/login" />} />
         </Routes>
       </Router>
@@ -84,6 +92,8 @@ function AppContent() {
             <>
               <Route path="/admin" element={<div className="space-y-6"><SeedData /><AdminDashboard /></div>} />
               <Route path="/admin/staff" element={<StaffManagement />} />
+              <Route path="/admin/staff/:id" element={<StaffProfile />} />
+              <Route path="/profile/:id" element={<StaffProfile />} />
               <Route path="/admin/payroll" element={<PayrollManagement />} />
               <Route path="/admin/queries" element={<AdminQueries />} />
               <Route path="/admin/promotions" element={<AdminPromotions />} />
@@ -93,12 +103,12 @@ function AppContent() {
             </>
           ) : (
             <>
-              <Route path="/" element={<StaffDashboard />} />
+              <Route path="/dashboard" element={<StaffDashboard />} />
               <Route path="/payslips" element={<Payslips />} />
               <Route path="/promotions" element={<StaffPromotions />} />
               <Route path="/queries" element={<StaffQueries />} />
               <Route path="/profile" element={<Profile />} />
-              <Route path="*" element={<Navigate to="/" />} />
+              <Route path="*" element={<Navigate to="/dashboard" />} />
             </>
           )}
         </Routes>

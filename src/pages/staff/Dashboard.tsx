@@ -4,7 +4,8 @@ import {
   MessageSquare, 
   Bell,
   ArrowUpRight,
-  Download
+  Download,
+  User
 } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import { useFirestoreCollection } from '../../hooks/useFirestore';
@@ -13,9 +14,11 @@ import { where, orderBy, limit } from 'firebase/firestore';
 import { formatCurrency, cn } from '../../lib/utils';
 import { format } from 'date-fns';
 import { generatePayslipPDF } from '../../lib/pdfGenerator';
+import { Link, useNavigate } from 'react-router-dom';
 
 export default function StaffDashboard() {
   const { profile } = useAuth();
+  const navigate = useNavigate();
   
   const { data: payslips } = useFirestoreCollection<Payslip>('payslips', [
     where('userId', '==', profile?.uid || ''),
@@ -51,6 +54,13 @@ export default function StaffDashboard() {
           <p className="text-tide-muted mt-1">Here's what's happening with your account today.</p>
         </div>
         <div className="flex items-center gap-3">
+          <button 
+            onClick={() => navigate(`/profile/${profile?.uid}`)}
+            className="flex items-center gap-2 px-4 py-2 bg-tide-gold text-tide-bg rounded-lg font-bold hover:bg-tide-gold-hover transition-all shadow-lg shadow-tide-gold/10"
+          >
+            <User className="w-4 h-4" />
+            View Profile
+          </button>
           <div className="px-4 py-2 bg-tide-gold/10 border border-tide-gold/20 rounded-lg">
             <span className="text-xs font-bold text-tide-gold uppercase tracking-widest">
               Status: {profile?.status}

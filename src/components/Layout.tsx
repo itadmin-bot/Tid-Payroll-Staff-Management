@@ -42,7 +42,7 @@ export default function Layout({ children }: LayoutProps) {
     { icon: Activity, label: 'Activity Logs', path: '/admin/logs' },
     { icon: Settings, label: 'Settings', path: '/admin/settings' },
   ] : [
-    { icon: LayoutDashboard, label: 'Overview', path: '/' },
+    { icon: LayoutDashboard, label: 'Overview', path: '/dashboard' },
     { icon: FileText, label: 'My Payslips', path: '/payslips' },
     { icon: TrendingUp, label: 'Promotions', path: '/promotions' },
     { icon: MessageSquare, label: 'Queries', path: '/queries' },

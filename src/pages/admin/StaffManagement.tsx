@@ -17,8 +17,10 @@ import { db } from '../../firebase/firebase';
 import { formatCurrency, cn } from '../../lib/utils';
 import { format } from 'date-fns';
 import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 
 export default function StaffManagement() {
+  const navigate = useNavigate();
   const [searchTerm, setSearchTerm] = useState('');
   const { data: staff, loading } = useFirestoreCollection<UserProfile>('users', [
     orderBy('createdAt', 'desc')
@@ -106,7 +108,11 @@ export default function StaffManagement() {
             </thead>
             <tbody className="divide-y divide-tide-gold/5">
               {filteredStaff.map((member) => (
-                <tr key={member.id} className="hover:bg-tide-gold/5 transition-colors group">
+                <tr 
+                  key={member.id} 
+                  className="hover:bg-tide-gold/5 transition-colors group cursor-pointer"
+                  onClick={() => navigate(`/admin/staff/${member.id}`)}
+                >
                   <td className="px-6 py-4">
                     <div className="flex items-center gap-3">
                       <div className="w-10 h-10 rounded-full bg-tide-bg border border-tide-gold/20 flex items-center justify-center font-bold text-tide-gold">
@@ -136,7 +142,7 @@ export default function StaffManagement() {
                     </span>
                   </td>
                   <td className="px-6 py-4 text-right">
-                    <div className="flex justify-end gap-2">
+                    <div className="flex justify-end gap-2" onClick={(e) => e.stopPropagation()}>
                       {member.status === 'pending' && (
                         <button 
                           onClick={() => handleStatusChange(member.id, 'active')}

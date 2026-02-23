@@ -4,15 +4,15 @@ import {
   Plus, 
   Search,
   Award,
-  ArrowUpRight
+  ArrowUpRight,
+  X
 } from 'lucide-react';
 import { useFirestoreCollection } from '../../hooks/useFirestore';
 import { UserProfile, Promotion } from '../../types';
 import { orderBy, doc, updateDoc, serverTimestamp, addDoc, collection } from 'firebase/firestore';
 import { db } from '../../firebase/firebase';
-import { formatCurrency } from '../../lib/utils';
+import { formatCurrency, cn } from '../../lib/utils';
 import { format } from 'date-fns';
-import { useState } from 'react';
 
 export default function AdminPromotions() {
   const [showForm, setShowForm] = useState(false);
@@ -88,27 +88,27 @@ export default function AdminPromotions() {
     <div className="space-y-6">
       <div className="flex justify-between items-center">
         <div>
-          <h1 className="text-2xl font-bold text-slate-900">Promotions & Growth</h1>
-          <p className="text-slate-500">Manage staff career advancement and salary adjustments</p>
+          <h1 className="text-2xl font-bold text-tide-text">Promotions & Growth</h1>
+          <p className="text-tide-muted">Manage staff career advancement and salary adjustments</p>
         </div>
         <button 
           onClick={() => setShowForm(!showForm)}
-          className="flex items-center gap-2 px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition shadow-md"
+          className="flex items-center gap-2 px-6 py-3 bg-tide-gold text-tide-bg rounded-xl font-bold hover:bg-tide-gold-hover transition shadow-lg shadow-tide-gold/20"
         >
-          <Plus className="w-4 h-4" />
-          New Promotion
+          {showForm ? <X className="w-4 h-4" /> : <Plus className="w-4 h-4" />}
+          {showForm ? 'Cancel' : 'New Promotion'}
         </button>
       </div>
 
       {showForm && (
-        <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100 animate-in fade-in slide-in-from-top-4">
-          <h3 className="font-bold text-slate-900 mb-4">Process New Promotion</h3>
+        <div className="card-luxury p-8 animate-in fade-in slide-in-from-top-4">
+          <h3 className="text-xl font-bold text-tide-text mb-6">Process New Promotion</h3>
           <form onSubmit={handlePromote} className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div className="space-y-2">
-              <label className="text-sm font-semibold text-slate-700">Select Staff</label>
+              <label className="text-xs font-bold text-tide-muted uppercase tracking-widest">Select Staff</label>
               <select 
                 required
-                className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-lg outline-none focus:ring-2 focus:ring-primary-500 transition"
+                className="input-field w-full"
                 value={selectedStaffId}
                 onChange={(e) => setSelectedStaffId(e.target.value)}
               >
@@ -119,39 +119,32 @@ export default function AdminPromotions() {
               </select>
             </div>
             <div className="space-y-2">
-              <label className="text-sm font-semibold text-slate-700">New Designation</label>
+              <label className="text-xs font-bold text-tide-muted uppercase tracking-widest">New Designation</label>
               <input 
                 type="text" 
                 required
-                className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-lg outline-none focus:ring-2 focus:ring-primary-500 transition"
+                className="input-field w-full"
                 value={newDesignation}
                 onChange={(e) => setNewDesignation(e.target.value)}
                 placeholder="e.g. Senior Manager"
               />
             </div>
             <div className="space-y-2">
-              <label className="text-sm font-semibold text-slate-700">New Base Salary (Monthly)</label>
+              <label className="text-xs font-bold text-tide-muted uppercase tracking-widest">New Base Salary (Monthly)</label>
               <input 
                 type="number" 
                 required
-                className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-lg outline-none focus:ring-2 focus:ring-primary-500 transition"
+                className="input-field w-full"
                 value={newSalary}
                 onChange={(e) => setNewSalary(e.target.value)}
                 placeholder="e.g. 350000"
               />
             </div>
-            <div className="md:col-span-2 flex justify-end gap-3 pt-4">
-              <button 
-                type="button"
-                onClick={() => setShowForm(false)}
-                className="px-4 py-2 text-slate-600 hover:bg-slate-50 rounded-lg transition"
-              >
-                Cancel
-              </button>
+            <div className="md:col-span-2 flex justify-end gap-4 pt-4">
               <button 
                 type="submit"
                 disabled={isSubmitting}
-                className="flex items-center gap-2 px-6 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition disabled:opacity-50"
+                className="flex items-center gap-2 px-8 py-3 bg-tide-gold text-tide-bg rounded-xl font-bold hover:bg-tide-gold-hover transition disabled:opacity-50 shadow-lg shadow-tide-gold/20"
               >
                 <Award className="w-4 h-4" />
                 {isSubmitting ? 'Processing...' : 'Confirm Promotion'}
@@ -161,50 +154,52 @@ export default function AdminPromotions() {
         </div>
       )}
 
-      <div className="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
-        <table className="w-full text-left border-collapse">
-          <thead>
-            <tr className="bg-slate-50 border-b border-slate-100">
-              <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider">Employee</th>
-              <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider">Role Change</th>
-              <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider">Salary Change</th>
-              <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider">Date</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-slate-100">
-            {promotions.map((promo) => (
-              <tr key={promo.id} className="hover:bg-slate-50 transition">
-                <td className="px-6 py-4">
-                  <p className="font-semibold text-slate-900">{promo.userName}</p>
-                </td>
-                <td className="px-6 py-4">
-                  <div className="flex items-center gap-2 text-sm">
-                    <span className="text-slate-400">{promo.oldDesignation}</span>
-                    <ArrowUpRight className="w-3 h-3 text-primary-500" />
-                    <span className="font-bold text-slate-900">{promo.newDesignation}</span>
-                  </div>
-                </td>
-                <td className="px-6 py-4">
-                  <div className="flex items-center gap-2 text-sm">
-                    <span className="text-slate-400">{formatCurrency(promo.oldSalary)}</span>
-                    <ArrowUpRight className="w-3 h-3 text-primary-500" />
-                    <span className="font-bold text-green-600">{formatCurrency(promo.newSalary)}</span>
-                  </div>
-                </td>
-                <td className="px-6 py-4 text-sm text-slate-500">
-                  {format(promo.createdAt?.toDate() || new Date(), 'MMM d, yyyy')}
-                </td>
+      <div className="card-luxury overflow-hidden">
+        <div className="overflow-x-auto">
+          <table className="w-full text-left border-collapse">
+            <thead>
+              <tr className="bg-tide-bg/50 border-b border-tide-gold/10">
+                <th className="px-6 py-4 text-[10px] font-bold text-tide-muted uppercase tracking-widest">Employee</th>
+                <th className="px-6 py-4 text-[10px] font-bold text-tide-muted uppercase tracking-widest">Role Change</th>
+                <th className="px-6 py-4 text-[10px] font-bold text-tide-muted uppercase tracking-widest">Salary Change</th>
+                <th className="px-6 py-4 text-[10px] font-bold text-tide-muted uppercase tracking-widest">Date</th>
               </tr>
-            ))}
-            {promotions.length === 0 && (
-              <tr>
-                <td colSpan={4} className="px-6 py-12 text-center text-slate-400">
-                  No promotion records found.
-                </td>
-              </tr>
-            )}
-          </tbody>
-        </table>
+            </thead>
+            <tbody className="divide-y divide-tide-gold/5">
+              {promotions.map((promo) => (
+                <tr key={promo.id} className="hover:bg-tide-gold/5 transition">
+                  <td className="px-6 py-4">
+                    <p className="font-bold text-tide-text">{promo.userName}</p>
+                  </td>
+                  <td className="px-6 py-4">
+                    <div className="flex items-center gap-2 text-sm">
+                      <span className="text-tide-muted">{promo.oldDesignation}</span>
+                      <ArrowUpRight className="w-3 h-3 text-tide-gold" />
+                      <span className="font-bold text-tide-text">{promo.newDesignation}</span>
+                    </div>
+                  </td>
+                  <td className="px-6 py-4">
+                    <div className="flex items-center gap-2 text-sm">
+                      <span className="text-tide-muted">{formatCurrency(promo.oldSalary)}</span>
+                      <ArrowUpRight className="w-3 h-3 text-tide-gold" />
+                      <span className="font-bold text-green-500">{formatCurrency(promo.newSalary)}</span>
+                    </div>
+                  </td>
+                  <td className="px-6 py-4 text-xs text-tide-muted">
+                    {format(promo.createdAt?.toDate() || new Date(), 'MMM d, yyyy')}
+                  </td>
+                </tr>
+              ))}
+              {promotions.length === 0 && (
+                <tr>
+                  <td colSpan={4} className="px-6 py-12 text-center text-tide-muted italic">
+                    No promotion records found.
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </div>
       </div>
     </div>
   );
