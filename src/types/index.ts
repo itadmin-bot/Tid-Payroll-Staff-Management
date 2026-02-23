@@ -16,6 +16,8 @@ export interface UserProfile {
   bankName?: string;
   accountNumber?: string;
   baseSalary: number;
+  isOnline?: boolean;
+  lastActive?: any;
 }
 
 export interface Payslip {

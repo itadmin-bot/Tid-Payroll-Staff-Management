@@ -5,7 +5,7 @@ import {
   signOut as firebaseSignOut,
   getIdTokenResult
 } from 'firebase/auth';
-import { doc, onSnapshot } from 'firebase/firestore';
+import { doc, onSnapshot, updateDoc, serverTimestamp } from 'firebase/firestore';
 import { auth, db } from '../firebase/firebase';
 import { UserProfile } from '../types';
 
@@ -43,6 +43,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       if (firebaseUser) {
         await checkClaims(firebaseUser);
         
+        // Update online status
+        await updateDoc(doc(db, 'users', firebaseUser.uid), {
+          isOnline: true,
+          lastActive: serverTimestamp()
+        }).catch(console.error);
+
         // Real-time profile listener
         const unsubscribeProfile = onSnapshot(
           doc(db, 'users', firebaseUser.uid), 
@@ -59,7 +65,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             setLoading(false);
           }
         );
-        return () => unsubscribeProfile();
+        return () => {
+          unsubscribeProfile();
+          // Update offline status on cleanup
+          if (auth.currentUser) {
+            updateDoc(doc(db, 'users', auth.currentUser.uid), {
+              isOnline: false,
+              lastActive: serverTimestamp()
+            }).catch(console.error);
+          }
+        };
       } else {
         setProfile(null);
         setRole(null);
@@ -71,6 +86,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const logout = async () => {
+    if (user) {
+      await updateDoc(doc(db, 'users', user.uid), {
+        isOnline: false,
+        lastActive: serverTimestamp()
+      }).catch(console.error);
+    }
     await firebaseSignOut(auth);
   };
 

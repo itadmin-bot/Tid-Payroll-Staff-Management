@@ -9,7 +9,7 @@ import { getAuth } from "firebase-admin/auth";
 // Here we rely on default credentials or project ID
 try {
   admin.initializeApp({
-    projectId: "tidepayslip"
+    projectId: "tide-payroll"
   });
 } catch (e) {
   console.error("Firebase Admin Init Error:", e);
@@ -35,7 +35,13 @@ async function startServer() {
     try {
       // 1. Verify Access Code from Firestore
       const systemDoc = await db.collection("settings").doc("system").get();
-      const storedCode = systemDoc.data()?.adminAccessCode;
+      let storedCode = systemDoc.data()?.adminAccessCode;
+
+      // If no code exists yet, initialize with default
+      if (!storedCode) {
+        storedCode = "TIDE-ADMIN-2026-X9FQ";
+        await db.collection("settings").doc("system").set({ adminAccessCode: storedCode });
+      }
 
       if (accessCode !== storedCode) {
         return res.status(403).json({ error: "Invalid Admin Access Code" });
@@ -49,11 +55,13 @@ async function startServer() {
         displayName: fullName,
         email: email,
         role: "admin",
-        status: "active", // Admins are auto-approved for this demo
+        status: "active",
         employeeId: `ADM-${Math.floor(1000 + Math.random() * 9000)}`,
         createdAt: admin.firestore.FieldValue.serverTimestamp(),
         updatedAt: admin.firestore.FieldValue.serverTimestamp(),
-        createdBy: "self-registration"
+        createdBy: "self-registration",
+        isOnline: true,
+        lastActive: admin.firestore.FieldValue.serverTimestamp()
       });
 
       // 4. Log Activity
@@ -69,6 +77,104 @@ async function startServer() {
     } catch (error: any) {
       console.error("Error assigning admin role:", error);
       res.status(500).json({ error: error.message || "Internal server error" });
+    }
+  });
+
+  // API Route for Changing User Role
+  app.post("/api/changeUserRole", async (req, res) => {
+    const { adminUid, targetUid, newRole } = req.body;
+
+    try {
+      // 1. Verify caller is admin
+      const adminUser = await auth.getUser(adminUid);
+      if (adminUser.customClaims?.role !== "admin") {
+        return res.status(403).json({ error: "Unauthorized: Admin only" });
+      }
+
+      // 2. Prevent self-demotion
+      if (adminUid === targetUid) {
+        return res.status(400).json({ error: "Admins cannot demote themselves" });
+      }
+
+      // 3. Assign Custom Claims
+      await auth.setCustomUserClaims(targetUid, { role: newRole });
+
+      // 4. Update Firestore
+      await db.collection("users").doc(targetUid).update({
+        role: newRole,
+        updatedAt: admin.firestore.FieldValue.serverTimestamp()
+      });
+
+      // 5. Log Activity
+      await db.collection("activities").add({
+        action: "ROLE_CHANGED",
+        targetUserId: targetUid,
+        performedBy: adminUid,
+        details: `Role changed to ${newRole}`,
+        createdAt: admin.firestore.FieldValue.serverTimestamp()
+      });
+
+      res.json({ success: true });
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // API Route for Deleting User
+  app.post("/api/deleteUser", async (req, res) => {
+    const { adminUid, targetUid } = req.body;
+
+    try {
+      const adminUser = await auth.getUser(adminUid);
+      if (adminUser.customClaims?.role !== "admin") {
+        return res.status(403).json({ error: "Unauthorized" });
+      }
+
+      if (adminUid === targetUid) {
+        return res.status(400).json({ error: "Admins cannot delete themselves" });
+      }
+
+      // Delete from Auth
+      await auth.deleteUser(targetUid);
+      // Delete from Firestore
+      await db.collection("users").doc(targetUid).delete();
+
+      await db.collection("activities").add({
+        action: "USER_DELETED",
+        targetUserId: targetUid,
+        performedBy: adminUid,
+        createdAt: admin.firestore.FieldValue.serverTimestamp()
+      });
+
+      res.json({ success: true });
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // API Route for Updating Access Code
+  app.post("/api/updateAccessCode", async (req, res) => {
+    const { adminUid, newCode } = req.body;
+
+    try {
+      const adminUser = await auth.getUser(adminUid);
+      if (adminUser.customClaims?.role !== "admin") {
+        return res.status(403).json({ error: "Unauthorized" });
+      }
+
+      await db.collection("settings").doc("system").update({
+        adminAccessCode: newCode
+      });
+
+      await db.collection("activities").add({
+        action: "ACCESS_CODE_CHANGED",
+        performedBy: adminUid,
+        createdAt: admin.firestore.FieldValue.serverTimestamp()
+      });
+
+      res.json({ success: true });
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
     }
   });
 

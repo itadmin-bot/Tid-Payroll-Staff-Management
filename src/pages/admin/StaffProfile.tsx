@@ -14,21 +14,26 @@ import {
   Edit3,
   Save,
   X,
-  DollarSign
+  DollarSign,
+  Download,
+  FileText
 } from 'lucide-react';
-import { doc, onSnapshot, updateDoc, serverTimestamp } from 'firebase/firestore';
+import { doc, onSnapshot, updateDoc, serverTimestamp, collection, query, where, orderBy, limit } from 'firebase/firestore';
 import { db } from '../../firebase/firebase';
-import { UserProfile } from '../../types';
+import { UserProfile, Payslip } from '../../types';
 import { formatCurrency, cn } from '../../lib/utils';
 import { format } from 'date-fns';
 import { motion } from 'motion/react';
 import { useAuth } from '../../contexts/AuthContext';
+import jsPDF from 'jspdf';
+import autoTable from 'jspdf-autotable';
 
 export default function StaffProfile() {
   const { id } = useParams<{ id: string }>();
   const { profile: currentUser } = useAuth();
   const navigate = useNavigate();
   const [member, setMember] = useState<UserProfile | null>(null);
+  const [payslips, setPayslips] = useState<Payslip[]>([]);
   const [loading, setLoading] = useState(true);
   const [isEditing, setIsEditing] = useState(false);
   const [formData, setFormData] = useState<Partial<UserProfile>>({});
@@ -53,6 +58,88 @@ export default function StaffProfile() {
 
     return () => unsubscribe();
   }, [id, navigate, isAdmin]);
+
+  useEffect(() => {
+    if (!id) return;
+
+    const q = query(
+      collection(db, 'payslips'),
+      where('userId', '==', id),
+      orderBy('month', 'desc'),
+      limit(12)
+    );
+
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      const data = snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id } as Payslip));
+      setPayslips(data);
+    });
+
+    return () => unsubscribe();
+  }, [id]);
+
+  const generatePDF = (payslip: Payslip) => {
+    const doc = new jsPDF();
+    
+    // Header
+    doc.setFontSize(22);
+    doc.setTextColor(198, 168, 106); // Tide Gold
+    doc.text('Tidé Hotels Management System', 105, 20, { align: 'center' });
+    
+    doc.setFontSize(16);
+    doc.setTextColor(20, 42, 66); // Dark Blue
+    doc.text('Official Payslip', 105, 30, { align: 'center' });
+    
+    doc.setFontSize(10);
+    doc.setTextColor(100);
+    doc.text(`Month: ${payslip.month}`, 20, 45);
+    doc.text(`Employee ID: ${payslip.employeeId}`, 20, 50);
+    doc.text(`Employee Name: ${payslip.userName}`, 20, 55);
+    doc.text(`Date Generated: ${format(new Date(), 'MMM dd, yyyy')}`, 140, 45);
+
+    // Earnings Table
+    autoTable(doc, {
+      startY: 70,
+      head: [['Description', 'Amount']],
+      body: [
+        ['Base Salary', formatCurrency(payslip.baseSalary)],
+        ['Housing Allowance', formatCurrency(payslip.allowances.housing)],
+        ['Transport Allowance', formatCurrency(payslip.allowances.transport)],
+        ['Medical Allowance', formatCurrency(payslip.allowances.medical)],
+        ['Other Allowances', formatCurrency(payslip.allowances.other)],
+        [{ content: 'Gross Salary', styles: { fontStyle: 'bold' } }, { content: formatCurrency(payslip.grossSalary), styles: { fontStyle: 'bold' } }],
+      ],
+      theme: 'striped',
+      headStyles: { fillColor: [198, 168, 106] },
+    });
+
+    // Deductions Table
+    autoTable(doc, {
+      startY: (doc as any).lastAutoTable.finalY + 10,
+      head: [['Deductions', 'Amount']],
+      body: [
+        ['Tax', formatCurrency(payslip.deductions.tax)],
+        ['Pension', formatCurrency(payslip.deductions.pension)],
+        ['Loan Repayment', formatCurrency(payslip.deductions.loan)],
+        ['Other Deductions', formatCurrency(payslip.deductions.other)],
+        [{ content: 'Total Deductions', styles: { fontStyle: 'bold' } }, { content: formatCurrency(payslip.deductions.tax + payslip.deductions.pension + payslip.deductions.loan + payslip.deductions.other), styles: { fontStyle: 'bold' } }],
+      ],
+      theme: 'striped',
+      headStyles: { fillColor: [220, 38, 38] }, // Danger Red
+    });
+
+    // Summary
+    const finalY = (doc as any).lastAutoTable.finalY + 20;
+    doc.setFontSize(14);
+    doc.setTextColor(198, 168, 106);
+    doc.text(`Net Salary Payable: ${formatCurrency(payslip.netSalary)}`, 105, finalY, { align: 'center' });
+
+    // Footer
+    doc.setFontSize(8);
+    doc.setTextColor(150);
+    doc.text('This is a computer-generated document. No signature required.', 105, 280, { align: 'center' });
+
+    doc.save(`Payslip_${payslip.userName}_${payslip.month}.pdf`);
+  };
 
   const handleUpdate = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -254,11 +341,11 @@ export default function StaffProfile() {
               <div className="space-y-2">
                 <label className="text-xs font-bold text-tide-muted uppercase tracking-widest">Base Salary (Monthly)</label>
                 <div className="relative">
-                  <DollarSign className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-tide-gold" />
+                  <DollarSign className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-tide-gold" />
                   <input 
                     type="number"
                     disabled={!isEditing || !isAdmin}
-                    className="input-field w-full pl-10 disabled:opacity-50"
+                    className="input-field w-full pl-12 disabled:opacity-50"
                     value={formData.baseSalary || 0}
                     onChange={(e) => setFormData({...formData, baseSalary: parseFloat(e.target.value)})}
                   />
@@ -295,6 +382,52 @@ export default function StaffProfile() {
                   </div>
                 </div>
               ))}
+            </div>
+          </section>
+
+          {/* Recent Payslips */}
+          <section className="card-luxury p-8 space-y-6">
+            <div className="flex items-center gap-3 border-b border-tide-gold/10 pb-4">
+              <FileText className="w-5 h-5 text-tide-gold" />
+              <h3 className="text-xl font-bold text-tide-text">Recent Payslips</h3>
+            </div>
+            
+            <div className="overflow-x-auto">
+              <table className="w-full text-left border-collapse">
+                <thead>
+                  <tr className="text-[10px] font-bold text-tide-muted uppercase tracking-widest">
+                    <th className="pb-4">Month</th>
+                    <th className="pb-4">Gross</th>
+                    <th className="pb-4">Net</th>
+                    <th className="pb-4 text-right">Action</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-tide-gold/5">
+                  {payslips.length > 0 ? payslips.map((payslip) => (
+                    <tr key={payslip.id} className="group">
+                      <td className="py-4 text-sm font-medium text-tide-text">{payslip.month}</td>
+                      <td className="py-4 text-sm text-tide-muted">{formatCurrency(payslip.grossSalary)}</td>
+                      <td className="py-4 text-sm font-bold text-tide-gold">{formatCurrency(payslip.netSalary)}</td>
+                      <td className="py-4 text-right">
+                        <button 
+                          type="button"
+                          onClick={() => generatePDF(payslip)}
+                          className="p-2 text-tide-gold hover:bg-tide-gold/10 rounded-lg transition-all"
+                          title="Download PDF"
+                        >
+                          <Download className="w-4 h-4" />
+                        </button>
+                      </td>
+                    </tr>
+                  )) : (
+                    <tr>
+                      <td colSpan={4} className="py-8 text-center text-tide-muted italic">
+                        No recent payslips found
+                      </td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
             </div>
           </section>
         </div>

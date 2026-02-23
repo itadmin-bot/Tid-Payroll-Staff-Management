@@ -31,6 +31,9 @@ export default function AdminDashboard() {
 
   const pendingApprovals = staff.filter(s => s.status === 'pending').length;
   const totalActive = staff.filter(s => s.status === 'active').length;
+  const onlineUsers = staff.filter(s => s.isOnline).length;
+  const totalAdmins = staff.filter(s => s.role === 'admin').length;
+  const totalStaff = staff.filter(s => s.role === 'staff').length;
   const totalPayroll = staff.reduce((sum, s) => sum + (s.baseSalary || 0), 0);
 
   // Chart data
@@ -45,7 +48,7 @@ export default function AdminDashboard() {
 
   const stats = [
     { label: 'Total Staff', value: staff.length.toString(), icon: Users, color: 'text-tide-gold', bg: 'bg-tide-gold/10' },
-    { label: 'Pending Approvals', value: pendingApprovals.toString(), icon: Clock, color: 'text-tide-danger', bg: 'bg-tide-danger/10', alert: pendingApprovals > 0 },
+    { label: 'Online Now', value: onlineUsers.toString(), icon: Activity, color: 'text-green-500', bg: 'bg-green-500/10' },
     { label: 'Monthly Payroll', value: formatCurrency(totalPayroll), icon: FileText, color: 'text-tide-gold', bg: 'bg-tide-gold/10' },
     { label: 'Avg. Salary', value: staff.length > 0 ? formatCurrency(totalPayroll / staff.length) : 'N/A', icon: TrendingUp, color: 'text-tide-gold', bg: 'bg-tide-gold/10' },
   ];
@@ -65,9 +68,6 @@ export default function AdminDashboard() {
               <div className={cn("p-3 rounded-xl border border-tide-gold/10", stat.bg)}>
                 <stat.icon className={cn("w-6 h-6", stat.color)} />
               </div>
-              {stat.alert && (
-                <span className="text-[10px] font-bold text-tide-danger bg-tide-danger/10 px-2 py-1 rounded-full border border-tide-danger/20 uppercase tracking-widest">Action Needed</span>
-              )}
             </div>
             <div>
               <p className="text-xs font-medium text-tide-muted uppercase tracking-wider">{stat.label}</p>

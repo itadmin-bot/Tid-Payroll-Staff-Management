@@ -17,6 +17,7 @@ import { useState } from 'react';
 
 export default function PayrollManagement() {
   const [isGenerating, setIsGenerating] = useState(false);
+  const [searchTerm, setSearchTerm] = useState('');
   const { data: staff } = useFirestoreCollection<UserProfile>('users', [
     orderBy('displayName', 'asc')
   ]);
@@ -27,6 +28,11 @@ export default function PayrollManagement() {
 
   const activeStaff = staff.filter(s => s.status === 'active');
   const currentMonth = format(new Date(), 'yyyy-MM');
+
+  const filteredPayslips = payslips.filter(slip => 
+    slip.userName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    slip.employeeId?.toLowerCase().includes(searchTerm.toLowerCase())
+  );
 
   const handleGeneratePayroll = async () => {
     if (!confirm(`Generate payroll for ${activeStaff.length} active staff for ${format(new Date(), 'MMMM yyyy')}?`)) return;
@@ -76,42 +82,41 @@ export default function PayrollManagement() {
 
   return (
     <div className="space-y-6">
-      <div className="flex justify-between items-center">
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-slate-900">Payroll Management</h1>
-          <p className="text-slate-500">Generate and manage staff payslips</p>
+          <h1 className="text-3xl font-bold text-tide-text">Payroll Management</h1>
+          <p className="text-tide-muted mt-1">Generate and manage staff payslips</p>
         </div>
-        <div className="flex gap-3">
+        <div className="flex gap-3 w-full md:w-auto">
           <button 
             onClick={handleGeneratePayroll}
             disabled={isGenerating}
-            className="flex items-center gap-2 px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition shadow-md disabled:opacity-50"
+            className="flex-1 md:flex-none flex items-center justify-center gap-2 px-6 py-3 bg-tide-gold text-tide-bg rounded-xl font-bold hover:bg-tide-gold-hover transition shadow-lg shadow-tide-gold/20 disabled:opacity-50"
           >
             <Plus className="w-4 h-4" />
-            {isGenerating ? 'Generating...' : 'Generate Monthly Payroll'}
+            {isGenerating ? 'Generating...' : 'Generate Payroll'}
           </button>
-          <button className="flex items-center gap-2 px-4 py-2 bg-white border border-slate-200 text-slate-600 rounded-lg hover:bg-slate-50 transition">
-            <Download className="w-4 h-4" />
-            Export CSV
+          <button className="p-3 bg-tide-card border border-tide-gold/10 rounded-xl text-tide-gold hover:bg-tide-gold/10 transition-all">
+            <Download className="w-5 h-5" />
           </button>
         </div>
       </div>
 
       {/* Summary Cards */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        <div className="bg-white p-6 rounded-2xl border border-slate-100 shadow-sm">
-          <p className="text-xs font-bold text-slate-400 uppercase tracking-wider">Total Active Staff</p>
-          <p className="text-2xl font-bold text-slate-900 mt-1">{activeStaff.length}</p>
+        <div className="card-luxury p-6">
+          <p className="text-[10px] font-bold text-tide-muted uppercase tracking-widest">Active Staff</p>
+          <p className="text-2xl font-bold text-tide-text mt-2">{activeStaff.length}</p>
         </div>
-        <div className="bg-white p-6 rounded-2xl border border-slate-100 shadow-sm">
-          <p className="text-xs font-bold text-slate-400 uppercase tracking-wider">Monthly Payroll Total</p>
-          <p className="text-2xl font-bold text-primary-600 mt-1">
+        <div className="card-luxury p-6 border-l-4 border-l-tide-gold">
+          <p className="text-[10px] font-bold text-tide-muted uppercase tracking-widest">Monthly Total</p>
+          <p className="text-2xl font-bold text-tide-gold mt-2">
             {formatCurrency(activeStaff.reduce((sum, s) => sum + (s.baseSalary || 0), 0))}
           </p>
         </div>
-        <div className="bg-white p-6 rounded-2xl border border-slate-100 shadow-sm">
-          <p className="text-xs font-bold text-slate-400 uppercase tracking-wider">Last Run Status</p>
-          <div className="flex items-center gap-2 mt-1 text-green-600 font-bold">
+        <div className="card-luxury p-6">
+          <p className="text-[10px] font-bold text-tide-muted uppercase tracking-widest">Last Run Status</p>
+          <div className="flex items-center gap-2 mt-2 text-green-500 font-bold">
             <CheckCircle2 className="w-5 h-5" />
             <span>Completed</span>
           </div>
@@ -119,64 +124,68 @@ export default function PayrollManagement() {
       </div>
 
       {/* Recent Payslips Table */}
-      <div className="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
-        <div className="p-6 border-b border-slate-100 flex justify-between items-center">
-          <h3 className="font-bold text-slate-900">Recent Payslips</h3>
-          <div className="relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+      <div className="card-luxury overflow-hidden">
+        <div className="p-6 border-b border-tide-gold/10 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+          <h3 className="font-bold text-tide-text">Recent Payslips</h3>
+          <div className="relative w-full md:w-64">
+            <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-tide-muted" />
             <input 
               type="text" 
               placeholder="Search payslips..."
-              className="pl-10 pr-4 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm outline-none focus:ring-2 focus:ring-primary-500 transition"
+              className="input-field w-full pl-12"
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
             />
           </div>
         </div>
-        <table className="w-full text-left border-collapse">
-          <thead>
-            <tr className="bg-slate-50 border-b border-slate-100">
-              <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider">Employee</th>
-              <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider">Month</th>
-              <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider">Gross</th>
-              <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider">Deductions</th>
-              <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider">Net Pay</th>
-              <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider">Status</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-slate-100">
-            {payslips.map((slip) => (
-              <tr key={slip.id} className="hover:bg-slate-50 transition">
-                <td className="px-6 py-4">
-                  <p className="font-semibold text-slate-900">{slip.userName}</p>
-                  <p className="text-xs text-slate-500">{slip.employeeId}</p>
-                </td>
-                <td className="px-6 py-4 text-sm text-slate-600">
-                  {format(new Date(slip.month), 'MMMM yyyy')}
-                </td>
-                <td className="px-6 py-4 text-sm font-medium text-slate-900">
-                  {formatCurrency(slip.grossSalary)}
-                </td>
-                <td className="px-6 py-4 text-sm text-red-600">
-                  -{formatCurrency(slip.deductions.tax + slip.deductions.pension)}
-                </td>
-                <td className="px-6 py-4 text-sm font-bold text-primary-700">
-                  {formatCurrency(slip.netSalary)}
-                </td>
-                <td className="px-6 py-4">
-                  <span className="px-2 py-1 rounded-full bg-green-100 text-green-700 text-[10px] font-bold uppercase tracking-wider">
-                    {slip.status}
-                  </span>
-                </td>
+        <div className="overflow-x-auto">
+          <table className="w-full text-left border-collapse">
+            <thead>
+              <tr className="bg-tide-bg/50 border-b border-tide-gold/10">
+                <th className="px-6 py-4 text-[10px] font-bold text-tide-muted uppercase tracking-widest">Employee</th>
+                <th className="px-6 py-4 text-[10px] font-bold text-tide-muted uppercase tracking-widest">Month</th>
+                <th className="px-6 py-4 text-[10px] font-bold text-tide-muted uppercase tracking-widest">Gross</th>
+                <th className="px-6 py-4 text-[10px] font-bold text-tide-muted uppercase tracking-widest">Deductions</th>
+                <th className="px-6 py-4 text-[10px] font-bold text-tide-muted uppercase tracking-widest">Net Pay</th>
+                <th className="px-6 py-4 text-[10px] font-bold text-tide-muted uppercase tracking-widest">Status</th>
               </tr>
-            ))}
-            {payslips.length === 0 && (
-              <tr>
-                <td colSpan={6} className="px-6 py-12 text-center text-slate-400">
-                  No payslips generated yet.
-                </td>
-              </tr>
-            )}
-          </tbody>
-        </table>
+            </thead>
+            <tbody className="divide-y divide-tide-gold/5">
+              {filteredPayslips.map((slip) => (
+                <tr key={slip.id} className="hover:bg-tide-gold/5 transition-colors">
+                  <td className="px-6 py-4">
+                    <p className="font-bold text-tide-text">{slip.userName}</p>
+                    <p className="text-[10px] text-tide-muted uppercase tracking-wider">{slip.employeeId}</p>
+                  </td>
+                  <td className="px-6 py-4 text-sm text-tide-muted">
+                    {format(new Date(slip.month), 'MMMM yyyy')}
+                  </td>
+                  <td className="px-6 py-4 text-sm font-bold text-tide-text">
+                    {formatCurrency(slip.grossSalary)}
+                  </td>
+                  <td className="px-6 py-4 text-sm text-tide-danger">
+                    -{formatCurrency(slip.deductions.tax + slip.deductions.pension)}
+                  </td>
+                  <td className="px-6 py-4 text-sm font-bold text-tide-gold">
+                    {formatCurrency(slip.netSalary)}
+                  </td>
+                  <td className="px-6 py-4">
+                    <span className="px-2 py-1 rounded-full bg-green-500/10 text-green-500 text-[10px] font-bold uppercase tracking-widest border border-green-500/20">
+                      {slip.status}
+                    </span>
+                  </td>
+                </tr>
+              ))}
+              {filteredPayslips.length === 0 && (
+                <tr>
+                  <td colSpan={6} className="px-6 py-12 text-center text-tide-muted italic">
+                    No payslips found.
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </div>
       </div>
     </div>
   );

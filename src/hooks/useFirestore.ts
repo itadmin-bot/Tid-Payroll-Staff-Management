@@ -32,7 +32,7 @@ export function useFirestoreCollection<T>(collectionName: string, constraints: Q
     });
 
     return () => unsubscribe();
-  }, [collectionName, JSON.stringify(constraints.map(c => c.toString()))]);
+  }, [collectionName]); // Removed the problematic stringified constraints
 
   return { data, loading, error };
 }

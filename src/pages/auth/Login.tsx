@@ -6,7 +6,7 @@ import {
 } from 'firebase/auth';
 import { auth } from '../../firebase/firebase';
 import { Link } from 'react-router-dom';
-import { Eye, EyeOff, Loader2, AlertCircle } from 'lucide-react';
+import { Eye, EyeOff, Loader2, AlertCircle, Mail, Lock } from 'lucide-react';
 
 export default function Login() {
   const [email, setEmail] = useState('');
@@ -89,25 +89,29 @@ export default function Login() {
         )}
 
         <form onSubmit={handleLogin} className="space-y-4">
-          <div>
-            <label className="block text-sm font-medium text-tide-muted mb-1">Email Address</label>
-            <input
-              type="email"
-              required
-              className="input-field w-full"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              placeholder="name@tidehotel.com"
-            />
+          <div className="space-y-1">
+            <label className="block text-sm font-medium text-tide-muted">Email Address</label>
+            <div className="relative group">
+              <Mail className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-tide-muted group-focus-within:text-tide-gold transition-colors" />
+              <input
+                type="email"
+                required
+                className="input-field w-full !pl-12"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                placeholder="name@tidehotel.com"
+              />
+            </div>
           </div>
           
-          <div className="relative">
-            <label className="block text-sm font-medium text-tide-muted mb-1">Password</label>
-            <div className="relative">
+          <div className="space-y-1">
+            <label className="block text-sm font-medium text-tide-muted">Password</label>
+            <div className="relative group">
+              <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-tide-muted group-focus-within:text-tide-gold transition-colors" />
               <input
                 type={showPassword ? "text" : "password"}
                 required
-                className="input-field w-full pr-12"
+                className="input-field w-full !pl-12 !pr-12"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 placeholder="••••••••"

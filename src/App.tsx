@@ -20,6 +20,8 @@ import PayrollManagement from './pages/admin/PayrollManagement';
 import AdminQueries from './pages/admin/Queries';
 import AdminPromotions from './pages/admin/Promotions';
 import StaffProfile from './pages/admin/StaffProfile';
+import SecuritySettings from './pages/admin/SecuritySettings';
+import ActivityLogs from './pages/admin/ActivityLogs';
 import SeedData from './components/SeedData';
 
 // Placeholder Pages
@@ -38,7 +40,16 @@ export default function App() {
 }
 
 function AppContent() {
-  const { user, profile, loading, isAdmin, logout } = useAuth();
+  const { user, profile, loading, isAdmin, logout, role } = useAuth();
+
+  useEffect(() => {
+    const path = window.location.pathname;
+    if (path === '/login') document.title = "Login | Tide Payroll";
+    else if (path === '/register') document.title = "Register | Tide Payroll";
+    else if (path === '/admin/register') document.title = "Admin Register | Tide Payroll";
+    else if (path.startsWith('/admin')) document.title = "Admin | Tide Payroll";
+    else document.title = "Dashboard | Tide Payroll";
+  }, [window.location.pathname]);
 
   if (loading) {
     return (
@@ -97,8 +108,8 @@ function AppContent() {
               <Route path="/admin/payroll" element={<PayrollManagement />} />
               <Route path="/admin/queries" element={<AdminQueries />} />
               <Route path="/admin/promotions" element={<AdminPromotions />} />
-              <Route path="/admin/logs" element={<div>Logs</div>} />
-              <Route path="/admin/settings" element={<div>Settings</div>} />
+              <Route path="/admin/logs" element={<ActivityLogs />} />
+              <Route path="/admin/security" element={<SecuritySettings />} />
               <Route path="*" element={<Navigate to="/admin" />} />
             </>
           ) : (

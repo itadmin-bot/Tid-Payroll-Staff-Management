@@ -78,6 +78,7 @@ export default function AdminRegister() {
       const data = await response.json();
       if (data.success) {
         await refreshUser();
+        setIsVerified(true);
         setTimeout(() => {
           setShowVerificationModal(false);
           navigate('/admin');
@@ -85,11 +86,15 @@ export default function AdminRegister() {
       } else {
         setError(data.error || 'Failed to assign admin role');
         setShowVerificationModal(false);
-        // If role assignment fails, we might need to delete the user or handle it
+        // If role assignment fails after verification, we might need to delete the user
+        if (auth.currentUser) {
+          await deleteUser(auth.currentUser).catch(console.error);
+        }
       }
     } catch (err) {
       console.error('Error in verification success:', err);
       setError('An error occurred during final setup');
+      setShowVerificationModal(false);
     }
   };
 
@@ -165,12 +170,12 @@ export default function AdminRegister() {
 
           <div className="space-y-2">
             <label className="text-xs font-bold text-tide-muted uppercase tracking-widest">Full Name</label>
-            <div className="relative">
-              <User className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-tide-muted" />
+            <div className="relative group">
+              <User className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-tide-muted group-focus-within:text-tide-gold transition-colors" />
               <input 
                 type="text"
                 required
-                className="input-field w-full pl-10"
+                className="input-field w-full !pl-12"
                 placeholder="Enter your full name"
                 value={fullName}
                 onChange={(e) => setFullName(e.target.value)}
@@ -180,12 +185,12 @@ export default function AdminRegister() {
 
           <div className="space-y-2">
             <label className="text-xs font-bold text-tide-muted uppercase tracking-widest">Email Address</label>
-            <div className="relative">
-              <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-tide-muted" />
+            <div className="relative group">
+              <Mail className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-tide-muted group-focus-within:text-tide-gold transition-colors" />
               <input 
                 type="email"
                 required
-                className="input-field w-full pl-10"
+                className="input-field w-full !pl-12"
                 placeholder="admin@tidehotel.com"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
@@ -196,42 +201,56 @@ export default function AdminRegister() {
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
               <label className="text-xs font-bold text-tide-muted uppercase tracking-widest">Password</label>
-              <div className="relative">
-                <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-tide-muted" />
+              <div className="relative group">
+                <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-tide-muted group-focus-within:text-tide-gold transition-colors" />
                 <input 
                   type={showPassword ? "text" : "password"}
                   required
-                  className="input-field w-full pl-10"
+                  className="input-field w-full !pl-12 !pr-12"
                   placeholder="••••••"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                 />
+                <button
+                  type="button"
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-tide-muted hover:text-tide-gold transition-colors"
+                  onClick={() => setShowPassword(!showPassword)}
+                >
+                  {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                </button>
               </div>
             </div>
             <div className="space-y-2">
               <label className="text-xs font-bold text-tide-muted uppercase tracking-widest">Confirm</label>
-              <div className="relative">
-                <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-tide-muted" />
+              <div className="relative group">
+                <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-tide-muted group-focus-within:text-tide-gold transition-colors" />
                 <input 
                   type={showPassword ? "text" : "password"}
                   required
-                  className="input-field w-full pl-10"
+                  className="input-field w-full !pl-12 !pr-12"
                   placeholder="••••••"
                   value={confirmPassword}
                   onChange={(e) => setConfirmPassword(e.target.value)}
                 />
+                <button
+                  type="button"
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-tide-muted hover:text-tide-gold transition-colors"
+                  onClick={() => setShowPassword(!showPassword)}
+                >
+                  {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                </button>
               </div>
             </div>
           </div>
 
           <div className="space-y-2">
             <label className="text-xs font-bold text-tide-muted uppercase tracking-widest">Admin Access Code</label>
-            <div className="relative">
-              <Key className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-tide-muted" />
+            <div className="relative group">
+              <Key className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-tide-muted group-focus-within:text-tide-gold transition-colors" />
               <input 
                 type="text"
                 required
-                className="input-field w-full pl-10 border-tide-gold/30 focus:border-tide-gold"
+                className="input-field w-full !pl-12 border-tide-gold/30 focus:border-tide-gold"
                 placeholder="TIDE-ADMIN-XXXX-XXXX"
                 value={accessCode}
                 onChange={(e) => setAccessCode(e.target.value)}

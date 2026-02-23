@@ -8,20 +8,30 @@ import {
   MoreVertical,
   CheckCircle,
   XCircle,
-  AlertCircle
+  AlertCircle,
+  Shield,
+  ShieldAlert,
+  Trash2,
+  Mail,
+  RefreshCw
 } from 'lucide-react';
 import { useFirestoreCollection } from '../../hooks/useFirestore';
 import { UserProfile } from '../../types';
-import { orderBy, doc, updateDoc, serverTimestamp } from 'firebase/firestore';
+import { orderBy, doc, updateDoc, serverTimestamp, deleteDoc } from 'firebase/firestore';
 import { db } from '../../firebase/firebase';
 import { formatCurrency, cn } from '../../lib/utils';
 import { format } from 'date-fns';
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useAuth } from '../../contexts/AuthContext';
 
 export default function StaffManagement() {
   const navigate = useNavigate();
+  const { user: currentUser } = useAuth();
   const [searchTerm, setSearchTerm] = useState('');
+  const [roleFilter, setRoleFilter] = useState<string>('all');
+  const [isProcessing, setIsProcessing] = useState<string | null>(null);
+
   const { data: staff, loading } = useFirestoreCollection<UserProfile>('users', [
     orderBy('createdAt', 'desc')
   ]);
@@ -37,11 +47,75 @@ export default function StaffManagement() {
     }
   };
 
-  const filteredStaff = staff.filter(s => 
-    s.displayName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    s.email?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    s.employeeId?.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  const handleRoleChange = async (targetUid: string, newRole: string) => {
+    if (!currentUser) return;
+    if (targetUid === currentUser.uid) {
+      alert("You cannot change your own role.");
+      return;
+    }
+
+    setIsProcessing(targetUid);
+    try {
+      const response = await fetch('/api/changeUserRole', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          adminUid: currentUser.uid,
+          targetUid,
+          newRole
+        })
+      });
+
+      const data = await response.json();
+      if (!data.success) throw new Error(data.error);
+      alert(`Role successfully changed to ${newRole}`);
+    } catch (err: any) {
+      alert(err.message || 'Failed to change role');
+    } finally {
+      setIsProcessing(null);
+    }
+  };
+
+  const handleDeleteUser = async (targetUid: string) => {
+    if (!currentUser) return;
+    if (targetUid === currentUser.uid) {
+      alert("You cannot delete yourself.");
+      return;
+    }
+
+    if (!confirm("Are you sure you want to permanently delete this user? This action cannot be undone.")) return;
+
+    setIsProcessing(targetUid);
+    try {
+      const response = await fetch('/api/deleteUser', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          adminUid: currentUser.uid,
+          targetUid
+        })
+      });
+
+      const data = await response.json();
+      if (!data.success) throw new Error(data.error);
+      alert('User successfully deleted');
+    } catch (err: any) {
+      alert(err.message || 'Failed to delete user');
+    } finally {
+      setIsProcessing(null);
+    }
+  };
+
+  const filteredStaff = staff.filter(s => {
+    const matchesSearch = 
+      s.displayName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      s.email?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      s.employeeId?.toLowerCase().includes(searchTerm.toLowerCase());
+    
+    const matchesRole = roleFilter === 'all' || s.role === roleFilter;
+    
+    return matchesSearch && matchesRole;
+  });
 
   return (
     <div className="space-y-8">
@@ -52,18 +126,24 @@ export default function StaffManagement() {
         </div>
         <div className="flex gap-3 w-full md:w-auto">
           <div className="relative flex-1 md:flex-none">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-tide-muted" />
+            <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-tide-muted" />
             <input 
               type="text" 
               placeholder="Search staff..."
-              className="input-field w-full md:w-64 pl-10"
+              className="input-field w-full md:w-64 pl-12"
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
             />
           </div>
-          <button className="p-3 bg-tide-card border border-tide-gold/10 rounded-xl text-tide-gold hover:bg-tide-gold/10 transition-all">
-            <Filter className="w-5 h-5" />
-          </button>
+          <select 
+            className="input-field bg-tide-card border-tide-gold/10 text-tide-text"
+            value={roleFilter}
+            onChange={(e) => setRoleFilter(e.target.value)}
+          >
+            <option value="all">All Roles</option>
+            <option value="admin">Admins</option>
+            <option value="staff">Staff</option>
+          </select>
         </div>
       </div>
 
@@ -115,11 +195,20 @@ export default function StaffManagement() {
                 >
                   <td className="px-6 py-4">
                     <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 rounded-full bg-tide-bg border border-tide-gold/20 flex items-center justify-center font-bold text-tide-gold">
-                        {member.displayName?.charAt(0)}
+                      <div className="relative">
+                        <div className="w-10 h-10 rounded-full bg-tide-bg border border-tide-gold/20 flex items-center justify-center font-bold text-tide-gold">
+                          {member.displayName?.charAt(0)}
+                        </div>
+                        <div className={cn(
+                          "absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 rounded-full border-2 border-tide-bg",
+                          member.isOnline ? "bg-green-500" : "bg-tide-muted"
+                        )} />
                       </div>
                       <div>
-                        <p className="font-semibold text-tide-text">{member.displayName}</p>
+                        <div className="flex items-center gap-2">
+                          <p className="font-semibold text-tide-text">{member.displayName}</p>
+                          {member.role === 'admin' && <Shield className="w-3 h-3 text-tide-gold" />}
+                        </div>
                         <p className="text-[10px] text-tide-muted uppercase tracking-wider">{member.employeeId}</p>
                       </div>
                     </div>
@@ -143,32 +232,64 @@ export default function StaffManagement() {
                   </td>
                   <td className="px-6 py-4 text-right">
                     <div className="flex justify-end gap-2" onClick={(e) => e.stopPropagation()}>
-                      {member.status === 'pending' && (
-                        <button 
-                          onClick={() => handleStatusChange(member.id, 'active')}
-                          className="p-2 text-green-500 hover:bg-green-500/10 rounded-lg transition-all"
-                          title="Approve"
-                        >
-                          <CheckCircle className="w-5 h-5" />
-                        </button>
-                      )}
-                      {member.status === 'active' && (
-                        <button 
-                          onClick={() => handleStatusChange(member.id, 'suspended')}
-                          className="p-2 text-tide-danger hover:bg-tide-danger/10 rounded-lg transition-all"
-                          title="Suspend"
-                        >
-                          <AlertCircle className="w-5 h-5" />
-                        </button>
-                      )}
-                      {member.status === 'suspended' && (
-                        <button 
-                          onClick={() => handleStatusChange(member.id, 'active')}
-                          className="p-2 text-green-500 hover:bg-green-500/10 rounded-lg transition-all"
-                          title="Reactivate"
-                        >
-                          <UserCheck className="w-5 h-5" />
-                        </button>
+                      {isProcessing === member.id ? (
+                        <RefreshCw className="w-5 h-5 text-tide-gold animate-spin" />
+                      ) : (
+                        <>
+                          {member.status === 'pending' && (
+                            <button 
+                              onClick={() => handleStatusChange(member.id, 'active')}
+                              className="p-2 text-green-500 hover:bg-green-500/10 rounded-lg transition-all"
+                              title="Approve"
+                            >
+                              <CheckCircle className="w-5 h-5" />
+                            </button>
+                          )}
+                          {member.status === 'active' && (
+                            <button 
+                              onClick={() => handleStatusChange(member.id, 'suspended')}
+                              className="p-2 text-tide-danger hover:bg-tide-danger/10 rounded-lg transition-all"
+                              title="Suspend"
+                            >
+                              <AlertCircle className="w-5 h-5" />
+                            </button>
+                          )}
+                          {member.status === 'suspended' && (
+                            <button 
+                              onClick={() => handleStatusChange(member.id, 'active')}
+                              className="p-2 text-green-500 hover:bg-green-500/10 rounded-lg transition-all"
+                              title="Reactivate"
+                            >
+                              <UserCheck className="w-5 h-5" />
+                            </button>
+                          )}
+                          
+                          {member.role === 'staff' ? (
+                            <button 
+                              onClick={() => handleRoleChange(member.id, 'admin')}
+                              className="p-2 text-tide-gold hover:bg-tide-gold/10 rounded-lg transition-all"
+                              title="Promote to Admin"
+                            >
+                              <Shield className="w-5 h-5" />
+                            </button>
+                          ) : (
+                            <button 
+                              onClick={() => handleRoleChange(member.id, 'staff')}
+                              className="p-2 text-tide-muted hover:bg-tide-gold/10 rounded-lg transition-all"
+                              title="Demote to Staff"
+                            >
+                              <ShieldAlert className="w-5 h-5" />
+                            </button>
+                          )}
+
+                          <button 
+                            onClick={() => handleDeleteUser(member.id)}
+                            className="p-2 text-tide-danger hover:bg-tide-danger/10 rounded-lg transition-all"
+                            title="Delete User"
+                          >
+                            <Trash2 className="w-5 h-5" />
+                          </button>
+                        </>
                       )}
                     </div>
                   </td>

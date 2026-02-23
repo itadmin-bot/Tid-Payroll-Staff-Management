@@ -39,8 +39,8 @@ export default function Layout({ children }: LayoutProps) {
     { icon: FileText, label: 'Payroll', path: '/admin/payroll' },
     { icon: MessageSquare, label: 'Queries', path: '/admin/queries' },
     { icon: TrendingUp, label: 'Promotions', path: '/admin/promotions' },
-    { icon: Activity, label: 'Activity Logs', path: '/admin/logs' },
-    { icon: Settings, label: 'Settings', path: '/admin/settings' },
+    { icon: Activity, label: 'Audit Trail', path: '/admin/logs' },
+    { icon: Settings, label: 'Security', path: '/admin/security' },
   ] : [
     { icon: LayoutDashboard, label: 'Overview', path: '/dashboard' },
     { icon: FileText, label: 'My Payslips', path: '/payslips' },
