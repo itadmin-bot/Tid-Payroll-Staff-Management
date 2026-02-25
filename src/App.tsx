@@ -10,6 +10,7 @@ import Layout from './components/Layout';
 import Login from './pages/auth/Login';
 import Register from './pages/auth/Register';
 import AdminRegister from './pages/auth/AdminRegister';
+import VerifyEmail from './pages/auth/VerifyEmail';
 import StaffDashboard from './pages/staff/Dashboard';
 import StaffQueries from './pages/staff/Queries';
 import StaffPromotions from './pages/staff/Promotions';
@@ -67,6 +68,17 @@ function AppContent() {
           <Route path="/register" element={<Register />} />
           <Route path="/admin/register" element={<AdminRegister />} />
           <Route path="*" element={<Navigate to="/login" />} />
+        </Routes>
+      </Router>
+    );
+  }
+
+  if (!user.emailVerified) {
+    return (
+      <Router>
+        <Routes>
+          <Route path="/verify-email" element={<VerifyEmail />} />
+          <Route path="*" element={<Navigate to="/verify-email" />} />
         </Routes>
       </Router>
     );

@@ -56,10 +56,8 @@ export default function Register() {
         baseSalary: 0
       });
 
-      setSuccess('Verification email sent. Please check your inbox before logging in.');
-      
-      // Optional: Redirect after a delay
-      setTimeout(() => navigate('/login'), 5000);
+      setSuccess('Account created! Please verify your email.');
+      // App.tsx will automatically redirect to /verify-email
     } catch (err: any) {
       console.error("Registration error:", err);
       switch (err.code) {

@@ -17,31 +17,33 @@ import {
 } from 'lucide-react';
 import { useFirestoreCollection } from '../../hooks/useFirestore';
 import { UserProfile } from '../../types';
-import { orderBy, doc, updateDoc, serverTimestamp, deleteDoc } from 'firebase/firestore';
+import { orderBy, doc, setDoc, serverTimestamp, deleteDoc } from 'firebase/firestore';
 import { db } from '../../firebase/firebase';
 import { formatCurrency, cn } from '../../lib/utils';
 import { format } from 'date-fns';
-import { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 
 export default function StaffManagement() {
   const navigate = useNavigate();
-  const { user: currentUser } = useAuth();
+  const { user: currentUser, profile } = useAuth();
   const [searchTerm, setSearchTerm] = useState('');
   const [roleFilter, setRoleFilter] = useState<string>('all');
   const [isProcessing, setIsProcessing] = useState<string | null>(null);
 
-  const { data: staff, loading } = useFirestoreCollection<UserProfile>('users', [
+  const constraints = useMemo(() => [
     orderBy('createdAt', 'desc')
-  ]);
+  ], []);
+
+  const { data: staff, loading, error } = useFirestoreCollection<UserProfile>('users', constraints, !!currentUser);
 
   const handleStatusChange = async (userId: string, newStatus: UserProfile['status']) => {
     try {
-      await updateDoc(doc(db, 'users', userId), {
+      await setDoc(doc(db, 'users', userId), {
         status: newStatus,
         updatedAt: serverTimestamp()
-      });
+      }, { merge: true });
     } catch (err) {
       console.error('Error updating status:', err);
     }
@@ -175,8 +177,19 @@ export default function StaffManagement() {
 
       {/* Staff Table */}
       <div className="card-luxury overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="w-full text-left border-collapse">
+        {loading ? (
+          <div className="flex items-center justify-center py-20">
+            <RefreshCw className="w-8 h-8 text-tide-gold animate-spin" />
+          </div>
+        ) : error ? (
+          <div className="p-12 text-center space-y-4">
+            <AlertCircle className="w-12 h-12 text-tide-danger mx-auto opacity-50" />
+            <p className="text-tide-text font-medium">Error loading staff data</p>
+            <p className="text-xs text-tide-muted">{error.message}</p>
+          </div>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full text-left border-collapse">
             <thead>
               <tr className="bg-tide-bg/50 border-b border-tide-gold/10">
                 <th className="px-6 py-4 text-[10px] font-bold text-tide-muted uppercase tracking-widest">Employee</th>
@@ -298,6 +311,7 @@ export default function StaffManagement() {
             </tbody>
           </table>
         </div>
+        )}
       </div>
     </div>
   );

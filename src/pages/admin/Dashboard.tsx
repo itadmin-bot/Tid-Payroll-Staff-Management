@@ -1,3 +1,4 @@
+import React, { useMemo } from 'react';
 import { 
   Users, 
   FileText, 
@@ -5,8 +6,10 @@ import {
   TrendingUp,
   Activity,
   CheckCircle2,
-  Clock
+  Clock,
+  RefreshCw
 } from 'lucide-react';
+import { useAuth } from '../../contexts/AuthContext';
 import { useFirestoreCollection } from '../../hooks/useFirestore';
 import { UserProfile, Payslip, ActivityLog } from '../../types';
 import { orderBy, limit } from 'firebase/firestore';
@@ -25,9 +28,39 @@ import {
 } from 'recharts';
 
 export default function AdminDashboard() {
-  const { data: staff } = useFirestoreCollection<UserProfile>('users');
-  const { data: payslips } = useFirestoreCollection<Payslip>('payslips', [orderBy('month', 'desc'), limit(100)]);
-  const { data: logs } = useFirestoreCollection<ActivityLog>('activities', [orderBy('createdAt', 'desc'), limit(5)]);
+  const { user: currentUser, profile } = useAuth();
+  
+  const payslipConstraints = useMemo(() => [orderBy('month', 'desc'), limit(100)], []);
+  const logConstraints = useMemo(() => [orderBy('createdAt', 'desc'), limit(5)], []);
+
+  const { data: staff, loading: staffLoading, error: staffError } = useFirestoreCollection<UserProfile>('users', [], !!currentUser);
+  const { data: payslips, loading: payslipsLoading } = useFirestoreCollection<Payslip>('payslips', payslipConstraints, !!currentUser);
+  const { data: logs, loading: logsLoading } = useFirestoreCollection<ActivityLog>('activities', logConstraints, !!currentUser);
+
+  if (staffLoading || payslipsLoading || logsLoading) {
+    return (
+      <div className="flex flex-col items-center justify-center h-[60vh] space-y-4">
+        <RefreshCw className="w-12 h-12 text-tide-gold animate-spin" />
+        <p className="text-tide-muted font-medium animate-pulse">Loading enterprise data...</p>
+      </div>
+    );
+  }
+
+  if (staffError) {
+    return (
+      <div className="flex flex-col items-center justify-center h-[60vh] space-y-4 text-center">
+        <AlertCircle className="w-16 h-16 text-tide-danger opacity-50" />
+        <h2 className="text-xl font-bold text-tide-text">Access Denied or Connection Error</h2>
+        <p className="text-tide-muted max-w-md">{staffError.message}</p>
+        <button 
+          onClick={() => window.location.reload()}
+          className="btn-primary px-8 py-2 mt-4"
+        >
+          Retry Connection
+        </button>
+      </div>
+    );
+  }
 
   const pendingApprovals = staff.filter(s => s.status === 'pending').length;
   const totalActive = staff.filter(s => s.status === 'active').length;

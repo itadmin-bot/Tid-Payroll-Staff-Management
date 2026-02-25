@@ -18,8 +18,9 @@ import {
   Download,
   FileText
 } from 'lucide-react';
-import { doc, onSnapshot, updateDoc, serverTimestamp, collection, query, where, orderBy, limit } from 'firebase/firestore';
+import { doc, onSnapshot, setDoc, serverTimestamp, collection, query, where, orderBy, limit } from 'firebase/firestore';
 import { db } from '../../firebase/firebase';
+import { useFirestoreCollection } from '../../hooks/useFirestore';
 import { UserProfile, Payslip } from '../../types';
 import { formatCurrency, cn } from '../../lib/utils';
 import { format } from 'date-fns';
@@ -33,7 +34,12 @@ export default function StaffProfile() {
   const { profile: currentUser } = useAuth();
   const navigate = useNavigate();
   const [member, setMember] = useState<UserProfile | null>(null);
-  const [payslips, setPayslips] = useState<Payslip[]>([]);
+  const { data: payslips } = useFirestoreCollection<Payslip>('payslips', [
+    where('userId', '==', id || ''),
+    orderBy('month', 'desc'),
+    limit(12)
+  ], !!id);
+
   const [loading, setLoading] = useState(true);
   const [isEditing, setIsEditing] = useState(false);
   const [formData, setFormData] = useState<Partial<UserProfile>>({});
@@ -58,24 +64,6 @@ export default function StaffProfile() {
 
     return () => unsubscribe();
   }, [id, navigate, isAdmin]);
-
-  useEffect(() => {
-    if (!id) return;
-
-    const q = query(
-      collection(db, 'payslips'),
-      where('userId', '==', id),
-      orderBy('month', 'desc'),
-      limit(12)
-    );
-
-    const unsubscribe = onSnapshot(q, (snapshot) => {
-      const data = snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id } as Payslip));
-      setPayslips(data);
-    });
-
-    return () => unsubscribe();
-  }, [id]);
 
   const generatePDF = (payslip: Payslip) => {
     const doc = new jsPDF();
@@ -154,10 +142,10 @@ export default function StaffProfile() {
         accountNumber: formData.accountNumber
       };
 
-      await updateDoc(doc(db, 'users', id), {
+      await setDoc(doc(db, 'users', id), {
         ...updateData,
         updatedAt: serverTimestamp()
-      });
+      }, { merge: true });
       setIsEditing(false);
     } catch (err) {
       console.error('Error updating profile:', err);

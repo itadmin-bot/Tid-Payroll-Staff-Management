@@ -15,7 +15,8 @@ import {
   Award
 } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
-import { doc, updateDoc, serverTimestamp, collection, query, where, orderBy, limit, onSnapshot } from 'firebase/firestore';
+import { useFirestoreCollection } from '../../hooks/useFirestore';
+import { doc, setDoc, serverTimestamp, collection, query, where, orderBy, limit, onSnapshot } from 'firebase/firestore';
 import { db } from '../../firebase/firebase';
 import { Payslip } from '../../types';
 import { formatCurrency, cn } from '../../lib/utils';
@@ -28,8 +29,12 @@ export default function Profile() {
   const { profile, refreshUser } = useAuth();
   const [isEditing, setIsEditing] = useState(false);
   const [loading, setLoading] = useState(false);
-  const [payslips, setPayslips] = useState<Payslip[]>([]);
-  
+  const { data: payslips } = useFirestoreCollection<Payslip>('payslips', [
+    where('userId', '==', profile?.uid || ''),
+    orderBy('month', 'desc'),
+    limit(12)
+  ], !!profile?.uid);
+
   const [formData, setFormData] = useState({
     displayName: profile?.displayName || '',
     phoneNumber: profile?.phoneNumber || '',
@@ -52,34 +57,16 @@ export default function Profile() {
     }
   }, [profile]);
 
-  useEffect(() => {
-    if (!profile?.uid) return;
-
-    const q = query(
-      collection(db, 'payslips'),
-      where('userId', '==', profile.uid),
-      orderBy('month', 'desc'),
-      limit(12)
-    );
-
-    const unsubscribe = onSnapshot(q, (snapshot) => {
-      const data = snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id } as Payslip));
-      setPayslips(data);
-    });
-
-    return () => unsubscribe();
-  }, [profile?.uid]);
-
   const handleUpdate = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!profile) return;
     
     setLoading(true);
     try {
-      await updateDoc(doc(db, 'users', profile.uid), {
+      await setDoc(doc(db, 'users', profile.uid), {
         ...formData,
         updatedAt: serverTimestamp()
-      });
+      }, { merge: true });
       await refreshUser();
       setIsEditing(false);
       alert('Profile updated successfully!');

@@ -32,81 +32,7 @@ export default function AdminRegister() {
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
-  const [showVerificationModal, setShowVerificationModal] = useState(false);
-  const [timer, setTimer] = useState(300); // 5 minutes in seconds
-  const [isVerified, setIsVerified] = useState(false);
-  const { refreshUser } = useAuth();
   const navigate = useNavigate();
-
-  useEffect(() => {
-    let interval: NodeJS.Timeout;
-    if (showVerificationModal && timer > 0 && !isVerified) {
-      interval = setInterval(async () => {
-        setTimer((prev) => prev - 1);
-        
-        // Check verification status every 5 seconds
-        if (timer % 5 === 0) {
-          if (auth.currentUser) {
-            await auth.currentUser.reload();
-            if (auth.currentUser.emailVerified) {
-              setIsVerified(true);
-              handleVerificationSuccess();
-            }
-          }
-        }
-      }, 1000);
-    } else if (timer === 0 && !isVerified) {
-      handleVerificationExpired();
-    }
-    return () => clearInterval(interval);
-  }, [showVerificationModal, timer, isVerified]);
-
-  const handleVerificationSuccess = async () => {
-    try {
-      // Call backend to assign role
-      const response = await fetch('/api/assignAdminRole', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          uid: auth.currentUser?.uid,
-          accessCode,
-          fullName,
-          email
-        })
-      });
-
-      const data = await response.json();
-      if (data.success) {
-        await refreshUser();
-        setIsVerified(true);
-        setTimeout(() => {
-          setShowVerificationModal(false);
-          navigate('/admin');
-        }, 2000);
-      } else {
-        setError(data.error || 'Failed to assign admin role');
-        setShowVerificationModal(false);
-        // If role assignment fails after verification, we might need to delete the user
-        if (auth.currentUser) {
-          await deleteUser(auth.currentUser).catch(console.error);
-        }
-      }
-    } catch (err) {
-      console.error('Error in verification success:', err);
-      setError('An error occurred during final setup');
-      setShowVerificationModal(false);
-    }
-  };
-
-  const handleVerificationExpired = async () => {
-    if (auth.currentUser && !auth.currentUser.emailVerified) {
-      await deleteUser(auth.currentUser);
-      await signOut(auth);
-      alert('Verification expired. Please register again.');
-      setShowVerificationModal(false);
-      navigate('/admin/register');
-    }
-  };
 
   const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -132,11 +58,17 @@ export default function AdminRegister() {
       // 1. Create Auth User
       const userCredential = await createUserWithEmailAndPassword(auth, email, password);
       
-      // 2. Send Verification Email
+      // 2. Store pending admin data for VerifyEmail page
+      localStorage.setItem('pendingAdminRegistration', JSON.stringify({
+        accessCode,
+        fullName,
+        email
+      }));
+
+      // 3. Send Verification Email
       await sendEmailVerification(userCredential.user);
       
-      // 3. Show Modal
-      setShowVerificationModal(true);
+      // App.tsx will automatically redirect to /verify-email
     } catch (err: any) {
       console.error('Registration error:', err);
       if (err.code === 'auth/email-already-in-use') {
@@ -272,55 +204,6 @@ export default function AdminRegister() {
           </p>
         </form>
       </div>
-
-      {/* Verification Modal */}
-      <AnimatePresence>
-        {showVerificationModal && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-tide-bg/90 backdrop-blur-sm">
-            <motion.div 
-              initial={{ opacity: 0, scale: 0.9, y: 20 }}
-              animate={{ opacity: 1, scale: 1, y: 0 }}
-              exit={{ opacity: 0, scale: 0.9, y: 20 }}
-              className="card-luxury max-w-md w-full p-8 text-center space-y-6"
-            >
-              <div className="inline-flex p-4 rounded-full bg-tide-gold/10 border border-tide-gold/20">
-                {isVerified ? (
-                  <CheckCircle2 className="w-12 h-12 text-green-500 animate-bounce" />
-                ) : (
-                  <Mail className="w-12 h-12 text-tide-gold animate-pulse" />
-                )}
-              </div>
-              
-              <div>
-                <h2 className="text-2xl font-bold text-tide-text">
-                  {isVerified ? 'Email Verified!' : 'Verify Your Email'}
-                </h2>
-                <p className="text-tide-muted mt-2">
-                  {isVerified 
-                    ? 'Setting up your admin account...' 
-                    : `A verification link has been sent to ${email}. Please verify within 5 minutes.`}
-                </p>
-              </div>
-
-              {!isVerified && (
-                <div className="flex flex-col items-center gap-2">
-                  <div className="flex items-center gap-2 text-2xl font-mono font-bold text-tide-gold bg-tide-bg px-6 py-3 rounded-xl border border-tide-gold/20">
-                    <Clock className="w-6 h-6" />
-                    {Math.floor(timer / 60)}:{(timer % 60).toString().padStart(2, '0')}
-                  </div>
-                  <p className="text-[10px] text-tide-muted uppercase tracking-widest">Time Remaining</p>
-                </div>
-              )}
-
-              <div className="pt-4">
-                <p className="text-xs text-tide-muted">
-                  Checking status automatically...
-                </p>
-              </div>
-            </motion.div>
-          </div>
-        )}
-      </AnimatePresence>
     </div>
   );
 }

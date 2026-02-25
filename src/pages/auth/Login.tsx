@@ -24,16 +24,7 @@ export default function Login() {
 
     try {
       const userCredential = await signInWithEmailAndPassword(auth, email, password);
-      const user = userCredential.user;
-
-      // Check if email is verified
-      if (!user.emailVerified) {
-        setNeedsVerification(true);
-        setError('Please verify your email before accessing the system.');
-        // Sign out immediately to prevent access
-        await signOut(auth);
-        return;
-      }
+      // App.tsx will handle the redirect to /verify-email if !user.emailVerified
     } catch (err: any) {
       console.error("Login error:", err);
       switch (err.code) {

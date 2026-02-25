@@ -1,3 +1,4 @@
+import React, { useMemo } from 'react';
 import { 
   TrendingUp, 
   FileText, 
@@ -5,7 +6,9 @@ import {
   Bell,
   ArrowUpRight,
   Download,
-  User
+  User,
+  RefreshCw,
+  AlertCircle
 } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import { useFirestoreCollection } from '../../hooks/useFirestore';
@@ -20,23 +23,35 @@ export default function StaffDashboard() {
   const { profile } = useAuth();
   const navigate = useNavigate();
   
-  const { data: payslips } = useFirestoreCollection<Payslip>('payslips', [
+  const payslipConstraints = useMemo(() => [
     where('userId', '==', profile?.uid || ''),
     orderBy('createdAt', 'desc'),
     limit(5)
-  ]);
+  ], [profile?.uid]);
 
-  const { data: notifications } = useFirestoreCollection<AppNotification>('notifications', [
+  const notificationConstraints = useMemo(() => [
     where('userId', '==', profile?.uid || ''),
     orderBy('createdAt', 'desc'),
     limit(5)
-  ]);
+  ], [profile?.uid]);
 
-  const { data: queries } = useFirestoreCollection<StaffQuery>('queries', [
+  const queryConstraints = useMemo(() => [
     where('userId', '==', profile?.uid || ''),
     orderBy('createdAt', 'desc'),
     limit(3)
-  ]);
+  ], [profile?.uid]);
+
+  const { data: payslips, loading: payslipsLoading, error: payslipsError } = useFirestoreCollection<Payslip>('payslips', payslipConstraints, !!profile?.uid);
+  const { data: notifications, loading: notificationsLoading } = useFirestoreCollection<AppNotification>('notifications', notificationConstraints, !!profile?.uid);
+  const { data: queries, loading: queriesLoading } = useFirestoreCollection<StaffQuery>('queries', queryConstraints, !!profile?.uid);
+
+  if (payslipsLoading || notificationsLoading || queriesLoading) {
+    return (
+      <div className="flex items-center justify-center py-20">
+        <RefreshCw className="w-8 h-8 text-tide-gold animate-spin" />
+      </div>
+    );
+  }
 
   const stats = [
     { label: 'Base Salary', value: formatCurrency(profile?.baseSalary || 0), icon: TrendingUp, color: 'text-tide-gold' },

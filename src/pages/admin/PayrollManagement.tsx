@@ -1,3 +1,4 @@
+import React, { useState, useMemo } from 'react';
 import { 
   Plus, 
   Download, 
@@ -5,26 +6,45 @@ import {
   FileText, 
   CheckCircle2,
   AlertCircle,
-  Search
+  Search,
+  RefreshCw
 } from 'lucide-react';
+import { useAuth } from '../../contexts/AuthContext';
 import { useFirestoreCollection } from '../../hooks/useFirestore';
 import { UserProfile, Payslip } from '../../types';
 import { orderBy, collection, addDoc, serverTimestamp } from 'firebase/firestore';
 import { db } from '../../firebase/firebase';
 import { formatCurrency, calculateTax, calculatePension, cn } from '../../lib/utils';
 import { format } from 'date-fns';
-import { useState } from 'react';
 
 export default function PayrollManagement() {
+  const { user: currentUser, profile } = useAuth();
   const [isGenerating, setIsGenerating] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
-  const { data: staff } = useFirestoreCollection<UserProfile>('users', [
-    orderBy('displayName', 'asc')
-  ]);
-  
-  const { data: payslips } = useFirestoreCollection<Payslip>('payslips', [
-    orderBy('month', 'desc')
-  ]);
+
+  const staffConstraints = useMemo(() => [orderBy('displayName', 'asc')], []);
+  const payslipConstraints = useMemo(() => [orderBy('month', 'desc')], []);
+
+  const { data: staff, loading: staffLoading, error: staffError } = useFirestoreCollection<UserProfile>('users', staffConstraints, !!currentUser);
+  const { data: payslips, loading: payslipsLoading } = useFirestoreCollection<Payslip>('payslips', payslipConstraints, !!currentUser);
+
+  if (staffLoading || payslipsLoading) {
+    return (
+      <div className="flex items-center justify-center py-20">
+        <RefreshCw className="w-8 h-8 text-tide-gold animate-spin" />
+      </div>
+    );
+  }
+
+  if (staffError) {
+    return (
+      <div className="p-12 text-center space-y-4">
+        <AlertCircle className="w-12 h-12 text-tide-danger mx-auto opacity-50" />
+        <p className="text-tide-text font-medium">Error loading payroll data</p>
+        <p className="text-xs text-tide-muted">{staffError.message}</p>
+      </div>
+    );
+  }
 
   const activeStaff = staff.filter(s => s.status === 'active');
   const currentMonth = format(new Date(), 'yyyy-MM');

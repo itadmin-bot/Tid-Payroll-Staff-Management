@@ -5,7 +5,7 @@ import {
   signOut as firebaseSignOut,
   getIdTokenResult
 } from 'firebase/auth';
-import { doc, onSnapshot, updateDoc, serverTimestamp } from 'firebase/firestore';
+import { doc, onSnapshot, setDoc, serverTimestamp } from 'firebase/firestore';
 import { auth, db } from '../firebase/firebase';
 import { UserProfile } from '../types';
 
@@ -37,20 +37,22 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   };
 
   useEffect(() => {
+    let unsubscribeProfile: (() => void) | undefined;
+
     const unsubscribeAuth = onAuthStateChanged(auth, async (firebaseUser) => {
       setUser(firebaseUser);
       
       if (firebaseUser) {
         await checkClaims(firebaseUser);
         
-        // Update online status
-        await updateDoc(doc(db, 'users', firebaseUser.uid), {
+        // Update online status using setDoc with merge to avoid "No document to update" error
+        await setDoc(doc(db, 'users', firebaseUser.uid), {
           isOnline: true,
           lastActive: serverTimestamp()
-        }).catch(console.error);
+        }, { merge: true }).catch(console.error);
 
         // Real-time profile listener
-        const unsubscribeProfile = onSnapshot(
+        unsubscribeProfile = onSnapshot(
           doc(db, 'users', firebaseUser.uid), 
           (snapshot) => {
             if (snapshot.exists()) {
@@ -65,32 +67,37 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             setLoading(false);
           }
         );
-        return () => {
-          unsubscribeProfile();
-          // Update offline status on cleanup
-          if (auth.currentUser) {
-            updateDoc(doc(db, 'users', auth.currentUser.uid), {
-              isOnline: false,
-              lastActive: serverTimestamp()
-            }).catch(console.error);
-          }
-        };
       } else {
+        if (unsubscribeProfile) {
+          unsubscribeProfile();
+          unsubscribeProfile = undefined;
+        }
         setProfile(null);
         setRole(null);
         setLoading(false);
       }
     });
 
-    return () => unsubscribeAuth();
+    return () => {
+      unsubscribeAuth();
+      if (unsubscribeProfile) unsubscribeProfile();
+      
+      // Update offline status on cleanup if we have a user
+      if (auth.currentUser) {
+        setDoc(doc(db, 'users', auth.currentUser.uid), {
+          isOnline: false,
+          lastActive: serverTimestamp()
+        }, { merge: true }).catch(console.error);
+      }
+    };
   }, []);
 
   const logout = async () => {
     if (user) {
-      await updateDoc(doc(db, 'users', user.uid), {
+      await setDoc(doc(db, 'users', user.uid), {
         isOnline: false,
         lastActive: serverTimestamp()
-      }).catch(console.error);
+      }, { merge: true }).catch(console.error);
     }
     await firebaseSignOut(auth);
   };
