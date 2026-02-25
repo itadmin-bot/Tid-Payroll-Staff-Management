@@ -1,22 +1,19 @@
 import express from "express";
 import { createServer as createViteServer } from "vite";
 import admin from "firebase-admin";
-import { getFirestore } from "firebase-admin/firestore";
-import { getAuth } from "firebase-admin/auth";
 
 // Initialize Firebase Admin
 // In a real environment, you'd use a service account key
 // Here we rely on default credentials or project ID
 try {
-  admin.initializeApp({
-    projectId: "tide-payroll"
-  });
+  admin.initializeApp();
+  console.log("Firebase Admin Initialized. Project ID:", admin.app().options.projectId || "Default");
 } catch (e) {
   console.error("Firebase Admin Init Error:", e);
 }
 
-const db = getFirestore();
-const auth = getAuth();
+const db = admin.firestore();
+const auth = admin.auth();
 
 async function startServer() {
   const app = express();
@@ -24,11 +21,21 @@ async function startServer() {
 
   app.use(express.json());
 
+  app.get("/api/health", (req, res) => {
+    res.json({ 
+      status: "ok", 
+      projectId: admin.app().options.projectId || "Default",
+      envProjectId: process.env.FIREBASE_PROJECT_ID || process.env.GCLOUD_PROJECT || "Not Set"
+    });
+  });
+
   // API Route for Admin Role Assignment
   app.post("/api/assignAdminRole", async (req, res) => {
     const { uid, accessCode, fullName, email } = req.body;
+    console.log(`Assigning admin role to ${email} (${uid})`);
 
     if (!uid || !accessCode) {
+      console.error("Missing required fields for admin assignment");
       return res.status(400).json({ error: "Missing required fields" });
     }
 
@@ -44,13 +51,16 @@ async function startServer() {
       }
 
       if (accessCode !== storedCode) {
+        console.warn(`Invalid access code attempt for ${email}`);
         return res.status(403).json({ error: "Invalid Admin Access Code" });
       }
 
       // 2. Set Custom Claims
+      console.log(`Setting custom claims for ${uid}`);
       await auth.setCustomUserClaims(uid, { role: "admin" });
 
       // 3. Create Firestore User Document
+      console.log(`Creating user document for ${uid}`);
       await db.collection("users").doc(uid).set({
         displayName: fullName,
         email: email,
@@ -73,6 +83,7 @@ async function startServer() {
         createdAt: admin.firestore.FieldValue.serverTimestamp()
       });
 
+      console.log(`Admin role successfully assigned to ${email}`);
       res.json({ success: true });
     } catch (error: any) {
       console.error("Error assigning admin role:", error);

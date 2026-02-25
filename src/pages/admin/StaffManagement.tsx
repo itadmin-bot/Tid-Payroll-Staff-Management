@@ -109,10 +109,11 @@ export default function StaffManagement() {
   };
 
   const filteredStaff = staff.filter(s => {
+    const searchLower = searchTerm.toLowerCase();
     const matchesSearch = 
-      s.displayName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      s.email?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      s.employeeId?.toLowerCase().includes(searchTerm.toLowerCase());
+      (s.displayName || '').toLowerCase().includes(searchLower) ||
+      (s.email || '').toLowerCase().includes(searchLower) ||
+      (s.employeeId || '').toLowerCase().includes(searchLower);
     
     const matchesRole = roleFilter === 'all' || s.role === roleFilter;
     
@@ -308,6 +309,20 @@ export default function StaffManagement() {
                   </td>
                 </tr>
               ))}
+              {filteredStaff.length === 0 && (
+                <tr>
+                  <td colSpan={5} className="px-6 py-20 text-center">
+                    <Users className="w-12 h-12 text-tide-gold/20 mx-auto mb-4" />
+                    <p className="text-tide-muted font-medium">No staff members found matching your criteria</p>
+                    <button 
+                      onClick={() => {setSearchTerm(''); setRoleFilter('all');}}
+                      className="text-tide-gold text-xs font-bold uppercase tracking-widest mt-2 hover:underline"
+                    >
+                      Clear all filters
+                    </button>
+                  </td>
+                </tr>
+              )}
             </tbody>
           </table>
         </div>

@@ -50,6 +50,8 @@ export default function VerifyEmail() {
             const result = await response.json();
             if (result.success) {
               localStorage.removeItem('pendingAdminRegistration');
+              // Force token refresh to include new custom claims
+              await auth.currentUser.getIdToken(true);
             }
           } catch (err) {
             console.error('Error processing pending admin:', err);

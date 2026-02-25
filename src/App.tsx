@@ -5,6 +5,7 @@ import {
   Navigate 
 } from 'react-router-dom';
 import React, { useEffect } from 'react';
+import { Clock } from 'lucide-react';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import Layout from './components/Layout';
 import Login from './pages/auth/Login';
@@ -86,22 +87,38 @@ function AppContent() {
 
   if (profile?.status === 'pending') {
     return (
-      <div className="h-screen flex items-center justify-center bg-slate-50 p-4">
-        <div className="max-w-md w-full bg-white rounded-2xl shadow-xl p-8 text-center space-y-4">
-          <div className="w-16 h-16 bg-yellow-100 rounded-full flex items-center justify-center mx-auto">
-            <span className="text-2xl">⏳</span>
+      <div className="h-screen flex items-center justify-center bg-tide-bg p-4">
+        <div className="max-w-md w-full bg-tide-card rounded-2xl shadow-2xl p-8 text-center space-y-6 border border-tide-gold/10">
+          <div className="w-20 h-20 bg-tide-gold/10 rounded-full flex items-center justify-center mx-auto border border-tide-gold/20">
+            <Clock className="w-10 h-10 text-tide-gold animate-pulse" />
           </div>
-          <h1 className="text-2xl font-bold text-slate-900">Account Pending</h1>
-          <p className="text-slate-500">
-            Your account is currently pending approval from the HR department. 
-            You will be notified once your account is active.
-          </p>
-          <button 
-            onClick={logout}
-            className="text-primary-600 font-semibold hover:underline"
-          >
-            Sign Out
-          </button>
+          <div className="space-y-2">
+            <h1 className="text-3xl font-bold text-tide-text">Account Pending</h1>
+            <p className="text-tide-muted">
+              Your account is currently pending approval from the HR department. 
+              You will be notified once your account is active.
+            </p>
+          </div>
+          
+          <div className="pt-6 border-t border-tide-gold/10 space-y-4">
+            <div className="p-4 bg-tide-bg/50 rounded-xl border border-tide-gold/5 text-left">
+              <p className="text-xs text-tide-muted leading-relaxed">
+                <span className="text-tide-gold font-bold">Note:</span> If you are an administrator, please ensure you registered through the admin portal.
+              </p>
+            </div>
+            
+            <div className="flex flex-col gap-3">
+              <button 
+                onClick={logout}
+                className="w-full py-3 rounded-xl font-bold bg-tide-gold text-tide-bg hover:bg-tide-gold-hover transition-all"
+              >
+                Sign Out
+              </button>
+              <p className="text-xs text-tide-muted">
+                Registered as staff by mistake? <a href="/admin/register" className="text-tide-gold hover:underline font-bold">Register as Admin</a>
+              </p>
+            </div>
+          </div>
         </div>
       </div>
     );
